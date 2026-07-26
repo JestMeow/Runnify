@@ -1,0 +1,98 @@
+#!/bin/python3
+
+import sys
+import subprocess
+import os
+from pathlib import Path
+
+
+SCRIPT_DIR = Path(__file__).resolve().parent.parent
+SCRIPT = Path(__file__)
+RUN_CONFIG = SCRIPT_DIR / 'run.conf'
+
+
+apps = {}
+
+for line in RUN_CONFIG.read_text().splitlines():
+    line = line.strip()
+
+    if not line or '=' not in line:
+        continue
+
+    app, target = line.split('=', 1)
+    apps[app] = target.strip("'\"")
+
+targets = {
+        f.name.lower(): {
+        'path': f,
+        'target': apps[f.name.lower()]
+    }
+    for f in SCRIPT_DIR.iterdir()
+    if f.is_dir() and f.name.lower() in apps and f.name != 'scripts'
+}
+
+
+to_open = None
+
+
+if len(sys.argv) > 1:
+    to_open = sys.argv[1].lower()
+
+
+def list_apps():
+    folder_names = [name['path'].name for name in targets.values()]
+    print("\t\t".join(sorted(folder_names)))
+
+
+def run_command(command, cwd):
+    subprocess.run([str(command)], cwd=cwd, shell=True)
+
+
+def print_banner(name):
+    message = f'* Running "{name}" *'
+    border = '*' * len(message)
+    print(f'{border}\n{message}\n{border}\n')
+
+
+def run():
+    if to_open is None:
+        return
+
+    target = targets.get(to_open)
+    if target is None:
+        print(
+            f'The app "{to_open}" was not found. '
+            f'Run "{SCRIPT.name} list" to see available apps.'
+        )
+        return
+
+    app = next(target['path'].glob(target['target']), None)
+
+    if app is None:
+        print_banner(target['target'])
+        run_command(target['target'], target['path'])
+        return
+
+    if not os.access(app, os.X_OK):
+        print(f'The file "{app.name}" is not executable.')
+        return
+
+    print_banner(app.name)
+    run_command(app, target['path'])
+
+
+def main():
+    if to_open is None:
+        print('Incorrect number of arguments.')
+        return
+
+    if to_open == 'list':
+        list_apps()
+        return
+
+    run()
+
+
+if __name__ == '__main__':
+    main()
+
