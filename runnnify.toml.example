@@ -1,0 +1,8 @@
+[executables]
+librecad = "*.AppImage"
+freecad = "*.AppImage"
+musescore = "*.AppImage"
+
+[commands]
+projectlibre = "java -jar *.jar"
+

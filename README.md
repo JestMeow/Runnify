@@ -1,10 +1,10 @@
 # Runnify
-Runnify is a simple command-line launcher for managing and running Linux AppImages (or other files) from a single directory.
+Runnify is a simple command-line "launcher" for managing and running executables such as AppImages, jar files, binaries, etc from a single directory.
 
-It helps you organize your AppImages (or other files) into folders and launches them by name.
+It helps you organize your executables into folders and launches them by name.
 
 ## Usage
-To launch an AppImage (or other file), run the script in the following format:
+To run an executable, run the script in the following format:
 
 ```bash
 runnify <app name>
@@ -26,22 +26,34 @@ An example folder structure can be seen below.
 │   └── MuseScore-Studio-4.7.4.260706075-x86_64.AppImage
 ├── ProjectLibre
 │   └── projectlibre-1.9.8.jar
-├── run.conf
+├── runnify.toml
 └── scripts
     └── runnify
 ```
 
-`run.conf` contains a key-value pair of app name (or folder name), and the name of the file to run, or the command to run. in the form of `<folder name>=<file name | command>`. `<folder name>` is not case-sensitive, i.e., it can be exclusively small letters, while the folder contains capital letters.
+## Configuration
+Runnify reads its configuration from `runnify.toml`.
 
-An example can be seen in `run.conf.example`.
+The file contains two sections:
+- `[executables]`, which maps application name to the executable file that should be run.
+- `[commands]` , which maps application name to a shell command that should be executed.
 
-If the 'value' is a command, it will run the command with the given `<folder name>` as the working directory.
+Here's an example:
+```toml
+[executables]
+musescore = "*.AppImage"
+
+[commands]
+projectlibre = "java -jar *.jar"
+
+```
+
+More examples can be seen in `runnify.toml.example`
 
 
 ## Requirements
 - Linux
 - Python 3
-- AppImage Application(s)
 
 Also, this script assumes you have Python 3 to be available at `/bin/python3`.
 

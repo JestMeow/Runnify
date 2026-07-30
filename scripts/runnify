@@ -2,54 +2,68 @@
 
 import sys
 import subprocess
-import os
 from pathlib import Path
+import tomllib
+from typing import Any
+from itertools import chain
+import re
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent.parent
 SCRIPT = Path(__file__)
-RUN_CONFIG = SCRIPT_DIR / 'run.conf'
-
-
-apps = {}
-
-for line in RUN_CONFIG.read_text().splitlines():
-    line = line.strip()
-
-    if not line or '=' not in line:
-        continue
-
-    app, target = line.split('=', 1)
-    apps[app] = target.strip("'\"")
-
-targets = {
-        f.name.lower(): {
-        'path': f,
-        'target': apps[f.name.lower()]
-    }
-    for f in SCRIPT_DIR.iterdir()
-    if f.is_dir() and f.name.lower() in apps and f.name != 'scripts'
-}
-
+RUN_CONFIG = SCRIPT_DIR / 'runnify.toml'
+RUN_CONFIG_CONTENTS = None
 
 to_open = None
+
+
+
+with open(RUN_CONFIG, 'rb') as f:
+    RUN_CONFIG_CONTENTS = tomllib.load(f)
+
+executables: dict[str, Any] = RUN_CONFIG_CONTENTS.get('executables', {})
+commands: dict[str, Any] = RUN_CONFIG_CONTENTS.get('commands', {})
+
+
+
+target_executables: dict[Any, Any] = {
+    f.name.lower(): {
+        'path': f,
+        'target': executables[f.name.lower()]
+    }
+    for f in SCRIPT_DIR.iterdir() if f.name.lower() in executables
+}
+
+target_commands: dict[Any, Any] = {
+    f.name.lower(): {
+        'path': f,
+        'target': commands[f.name.lower()]
+    }
+    for f in SCRIPT_DIR.iterdir() if f.name.lower() in commands
+}
+
+available_targets: list[str] = [*chain([f'\033[1;94m{n['path'].name}\033[0m' for n in target_executables.values()], [f'\033[1;91m{n['path'].name}\033[0m' for n in target_commands.values()])]
+
 
 
 if len(sys.argv) > 1:
     to_open = sys.argv[1].lower()
 
 
+def strip_ansi(text):
+    return re.sub(r'\x1b\[[0-9;]*m', '', text)
+
+
 def list_apps():
-    folder_names = [name['path'].name for name in targets.values()]
-    print("\t\t".join(sorted(folder_names)))
+    print("\t\t".join(sorted(available_targets, key=strip_ansi)))
 
 
 def run_command(command, cwd):
     subprocess.run([str(command)], cwd=cwd, shell=True)
 
 
-def print_banner(name):
-    message = f'* Running "{name}" *'
+def print_banner(name, file_name):
+    message = f'* Running \033[1;93m{name}\033[0m : {file_name} *'
     border = '*' * len(message)
     print(f'{border}\n{message}\n{border}\n')
 
@@ -58,32 +72,44 @@ def run():
     if to_open is None:
         return
 
-    target = targets.get(to_open)
-    if target is None:
-        print(
-            f'The app "{to_open}" was not found. '
-            f'Run "{SCRIPT.name} list" to see available apps.'
-        )
+
+
+    if to_open in executables:
+        print(f'Executable: {to_open}')
+        target = target_executables[to_open]
+
+        app = next(target['path'].glob(target['target']), None)
+
+        if app is None:
+            return
+
+        print_banner(target['path'].name, app.name)
+        run_command(app, target.get('path'))
         return
 
-    app = next(target['path'].glob(target['target']), None)
+    elif to_open in commands:
+        print(f'Commands: {to_open}')
+        target = target_commands[to_open]
 
-    if app is None:
-        print_banner(target['target'])
+        print_banner(target['path'].name, target['target'])
         run_command(target['target'], target['path'])
         return
 
-    if not os.access(app, os.X_OK):
-        print(f'The file "{app.name}" is not executable.')
-        return
+    else:
+        print(
+            f'The app "{to_open}" was not found. '
+            f'Run "{SCRIPT.name} list" to see available targets.'
+        )
 
-    print_banner(app.name)
-    run_command(app, target['path'])
+        return
 
 
 def main():
     if to_open is None:
-        print('Incorrect number of arguments.')
+        print(
+            'Incorrect number of arguments. '
+            f'Run "{SCRIPT.name} list" to see available targets.'
+        )
         return
 
     if to_open == 'list':

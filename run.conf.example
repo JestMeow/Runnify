@@ -1,4 +1,0 @@
-librecad=*.AppImage
-freecad=*.AppImage
-musescore=*.AppImage
-projectlibre='java -jar *.jar'
