@@ -1,4 +1,4 @@
-#!/bin/python3
+#!/usr/bin/env python3
 
 import sys
 import subprocess
@@ -23,7 +23,7 @@ with open(RUN_CONFIG, 'rb') as f:
 
 executables: dict[str, Any] = RUN_CONFIG_CONTENTS.get('executables', {})
 commands: dict[str, Any] = RUN_CONFIG_CONTENTS.get('commands', {})
-
+args: list[str] = sys.argv[2:]
 
 
 target_executables: dict[Any, Any] = {
@@ -59,20 +59,19 @@ def list_apps():
 
 
 def run_command(command, cwd):
-    subprocess.run([str(command)], cwd=cwd, shell=True)
+    # print([f'{str(command)} {' '.join(args)}'])
+    subprocess.run([f'{str(command)} {' '.join(args)}'], cwd=cwd, shell=True)
 
 
 def print_banner(name, file_name):
     message = f'* Running \033[1;93m{name}\033[0m : {file_name} *'
-    border = '*' * len(message)
+    border = '*' * (len(message) - 11)
     print(f'{border}\n{message}\n{border}\n')
 
 
 def run():
     if to_open is None:
         return
-
-
 
     if to_open in executables:
         print(f'Executable: {to_open}')
